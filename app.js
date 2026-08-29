@@ -5,7 +5,7 @@ const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-const EDITOR_EMAILS   = ["m.illikkal@calo.app", "j.swamy@calo.app"];
+const EDITOR_EMAILS   = ["n.bhat@calo.app"];
 const OPS_EMAILS      = []; // TODO: add Qatar ops emails if needed
 const _UNUSED = ["j.singh@calo.app", "a.dere@calo.app", "b.ongia@calo.app", "s.dutt@calo.app", "l.lama@calo.app", "k.lanot@calo.app"];
 const MARKET         = "Qatar"; // This portal's market — enforced server-side by RLS too
@@ -77,9 +77,13 @@ document.getElementById("togglePw").addEventListener("click", () => {
 
 async function onSignIn(user) {
   session  = user;
-  // Check role from user_roles table (source of truth — EDITOR_EMAILS is a fallback)
-  const { data: roleRow } = await sb.from("user_roles")
-    .select("role").eq("user_id", user.id).single().catch(() => ({ data: null }));
+  // Check role from user_roles table, fall back to EDITOR_EMAILS if no row found
+  let roleRow = null;
+  try {
+    const { data } = await sb.from("user_roles")
+      .select("role").eq("user_id", user.id).eq("market", MARKET).maybeSingle();
+    roleRow = data;
+  } catch(e) { /* table may not exist yet — fall back to EDITOR_EMAILS */ }
   isEditor = roleRow?.role === "admin" || EDITOR_EMAILS.includes(user.email.toLowerCase());
   isOps    = !isEditor && OPS_EMAILS.includes(user.email.toLowerCase());
   setSyncState("syncing");
